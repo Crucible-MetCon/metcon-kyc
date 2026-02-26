@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh --version)",
+      "Bash(gh auth status)",
+      "Bash(railway whoami)",
+      "Bash(git init)",
+      "Bash(git add -A)"
+    ]
+  }
+}

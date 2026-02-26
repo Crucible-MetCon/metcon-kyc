@@ -1,0 +1,246 @@
+// KYC Onboarding Database Schema — KYC DOC 011 Version 004_202511
+// SQLite for local dev; swap provider to "postgresql" for production
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// CASE — top-level onboarding session
+// ─────────────────────────────────────────────
+model Case {
+  id                      String    @id @default(cuid())
+  case_number             Int       @default(autoincrement())
+  token                   String    @unique @default(cuid())
+  status                  String    @default("in_progress") // in_progress | needs_review | complete | submitted_to_compliance
+  mandatory_percent       Int       @default(0)  // Section A mandatory fields progress
+  docs_percent            Int       @default(0)  // Documents checklist progress
+  completion_percent      Int       @default(0)  // overall (avg of above)
+  entity_type             String?   // Company | Individual
+  risk_flag               Boolean   @default(false)
+  submitted_to_compliance Boolean   @default(false)
+  submitted_at            DateTime?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  counterparty        Counterparty?
+  messages            Message[]
+  documents           Document[]
+  pending_extractions PendingExtraction[]
+}
+
+// ─────────────────────────────────────────────
+// COUNTERPARTY — full KYC DOC 011 data model
+// ─────────────────────────────────────────────
+model Counterparty {
+  id      String @id @default(cuid())
+  case_id String @unique
+  case    Case   @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  // ── Section A: Applicant Details ──────────────────
+  entity_type                  String?  // Company | Individual
+  registered_name              String?  // 1.1 Registered name
+  registration_or_id_number    String?  // 1.3 Registration number / ID / Passport number
+  business_address             String?  // 1.4 Business address incl postal code
+  business_phone_work          String?  // 1.5 Tel Work
+  business_phone_cell          String?  // 1.5 Tel Cell
+  email_address                String?  // 1.6 Business email
+  type_of_business             String?  // 1.7 e.g. Jewellers, Coin Dealer
+  contact_person_name          String?  // 1.8 Contact person Name & Surname
+  contact_person_tel_work      String?  // 1.8 Contact Tel Work
+  contact_person_tel_cell      String?  // 1.8 Contact Tel Cell
+  contact_person_email         String?  // 1.8 Contact Email
+  fica_org_id                  String?  // 1.9 FICA Org ID
+  website                      String?  // 1.10
+  tax_number                   String?  // 1.11 Tax registration number
+  vat_number                   String?  // 1.12 VAT registration number
+  vat_category                 String?  // 1.13 A/B/C/D/E
+  multiple_branches            Boolean? // 1.14
+  branch_count                 Int?     // 1.14 number of branches
+  pep_related                  Boolean? // 1.15
+  pep_relationship_details     String?  // 1.15 details if yes
+
+  // ── Section D: Financials ──────────────────────────
+  bank_name                    String?
+  account_name                 String?
+  account_number               String?
+  branch_code                  String?
+  branch_name                  String?
+  swift_code                   String?
+  audit_company_name           String?
+  auditor_phone_work           String?
+  auditor_phone_cell           String?
+  last_audit_date              String?  // ISO date
+  source_of_funds_description  String?
+
+  // ── Section E: Business Activity ──────────────────
+  business_type_checkboxes     String?  // JSON array: ["Jeweller","Coin Dealer",...]
+  business_activity_description String?
+  holds_license                Boolean?
+  license_types                String?  // JSON array: ["Mining","Refining",...]
+  license_number               String?
+  license_expiry_date          String?  // ISO date
+
+  // ── Section F: Facilities & Materials ─────────────
+  has_smelting_facilities      Boolean?
+  has_manufacturing_facilities Boolean?
+  produces_retail_products     Boolean?
+  // Customer metals
+  customer_metals_json         String?  // JSON: {gold,silver,platinum,palladium}
+  metal_forms_json             String?  // JSON: [Castings,Granules,Findings,Alloys]
+  precious_metal_association   Boolean?
+  association_memberships_json String?  // JSON: [LBMA,RJC,Other]
+  // Supplier
+  supplier_metals_json         String?  // JSON: {gold,silver,platinum,palladium}
+  source_material_percentage   String?
+  supplier_profile             String?  // Bank|Company|Individual|Other
+  source_material_country      String?
+  unprocessed_recycled_kg      Float?
+  jewellers_sweeps_kg          Float?
+  melted_recycled_kg           Float?
+  primary_mined_kg             Float?
+  mine_name                    String?
+  mine_address                 String?
+  mining_permit_number         String?
+
+  // ── Section G: AML / CFT & Anti-Bribery ───────────
+  subject_to_aml_law           Boolean?
+  aml_law_name                 String?
+  aml_regulator                String?
+  has_aml_conformity_program   Boolean?
+  aml_responsible_person_name  String?
+  aml_responsible_person_phone String?
+  aml_responsible_person_email String?
+  has_anti_bribery_policy      Boolean?
+  charged_for_anti_bribery     Boolean?
+  provides_aml_training        Boolean?
+
+  // ── Section H: Transaction Monitoring ─────────────
+  performs_risk_assessment         Boolean?
+  suspicious_tx_reporting          Boolean?
+  suspicious_detection_details     String?
+  registers_precious_metal_tx      Boolean?
+  monitors_unusual_activity        Boolean?
+  unusual_activity_details         String?
+  structured_tx_procedures         Boolean?
+  max_cash_amount                  Float?
+  max_eft_amount                   Float?
+  supplier_bank_pct                Float?
+  supplier_company_pct             Float?
+  supplier_individual_pct          Float?
+  payment_bank_transfer_pct        Float?
+  payment_cheque_pct               Float?
+  payment_cash_pct                 Float?
+  payment_method_primary           String?
+  payment_last_year_description    String?
+
+  // ── Section I: Declaration & Consent ──────────────
+  fica_processing_authorised       Boolean?
+  popia_consent                    Boolean?
+  info_true_declaration            Boolean?
+  // Supplier declarations
+  confirms_beneficial_owner_goods  Boolean?
+  confirms_legitimate_owners       Boolean?
+  confirms_prevent_criminal_goods  Boolean?
+  confirms_legislation_compliance  Boolean?
+  confirms_no_forced_labour        Boolean?
+  confirms_environmental_compliance Boolean?
+  confirms_no_bribery              Boolean?
+  commits_to_oecd                  Boolean?
+  // Signatory
+  declaration_signature_name       String?
+  declaration_signature_position   String?
+  declaration_signature_date       String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  associated_persons AssociatedPerson[]
+}
+
+// ─────────────────────────────────────────────
+// ASSOCIATED PERSON — directors / UBOs / signatories / shareholders
+// ─────────────────────────────────────────────
+model AssociatedPerson {
+  id              String       @id @default(cuid())
+  counterparty_id String
+  counterparty    Counterparty @relation(fields: [counterparty_id], references: [id], onDelete: Cascade)
+
+  person_full_name         String?
+  person_role_type         String?  // Director | Member | Owner | Shareholder | UBO | Authorised Signatory | Other
+  person_nationality       String?
+  country_of_incorporation String?  // for directors of companies
+  person_id_or_passport    String?
+  person_address           String?
+  ownership_percentage     Float?
+  person_designation       String?  // Capacity/Designation (for auth signatories)
+  person_email             String?  // for auth signatories
+  person_phone             String?  // for auth signatories
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// DOCUMENT — uploaded files with metadata
+// ─────────────────────────────────────────────
+model Document {
+  id      String @id @default(cuid())
+  case_id String
+  case    Case   @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  // Types match KYC DOC 011 page 2 checklist
+  doc_type      String  // company_registration | beneficial_ownership | group_structure |
+                        // shareholder_certificates | bbbee_cert | vat_revalidation |
+                        // tax_compliance | bank_confirmation | address_proof |
+                        // id_passport | license_permit | import_export_permit |
+                        // police_clearance | supply_chain_declaration | aml_policy |
+                        // anti_bribery_policy | association_proof | other
+  original_name String
+  storage_path  String
+  file_size     Int
+  mime_type     String
+  status        String  @default("received") // received | verified | rejected
+
+  associated_person_id String?
+  notes                String?
+
+  created_at DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// PENDING EXTRACTION — document intelligence awaiting confirmation
+// ─────────────────────────────────────────────
+model PendingExtraction {
+  id          String @id @default(cuid())
+  case_id     String
+  case        Case   @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  document_id          String
+  document_name        String
+  extracted_fields_json String  // JSON of KYCExtractionResult
+  confirmation_message  String
+  status               String  @default("pending") // pending | confirmed | rejected
+
+  created_at DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// MESSAGE — conversation history
+// ─────────────────────────────────────────────
+model Message {
+  id      String @id @default(cuid())
+  case_id String
+  case    Case   @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  role       String  // user | assistant
+  content    String
+  metadata   String? // JSON: { extractedFields, progressBefore, progressAfter, enrichments }
+
+  created_at DateTime @default(now())
+}
