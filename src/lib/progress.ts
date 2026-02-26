@@ -1,5 +1,9 @@
 import { Counterparty, AssociatedPerson, Document } from '@prisma/client';
 import { DualProgress, SectionProgress, MissingField, CaseStatus } from '@/types/kyc';
+import { DOCUMENT_CHECKLIST } from '@/lib/document-checklist';
+
+// Re-export so existing consumers (tests, etc.) still work
+export { DOCUMENT_CHECKLIST };
 
 type CounterpartyWithPersons = Counterparty & {
   associated_persons: AssociatedPerson[];
@@ -30,30 +34,6 @@ export const MINIMUM_REQUIRED: Array<{ key: keyof Counterparty; label: string }>
 function hasPhone(cp: Counterparty): boolean {
   return hasValue(cp.business_phone_work) || hasValue(cp.business_phone_cell);
 }
-
-// ─────────────────────────────────────────────
-// DOCUMENTS CHECKLIST — KYC DOC 011 page 2
-// ─────────────────────────────────────────────
-export const DOCUMENT_CHECKLIST: Array<{
-  doc_type: string;
-  label: string;
-  required_for: 'all' | 'company' | 'individual' | 'supplier';
-}> = [
-  { doc_type: 'company_registration',   label: 'Company registration documents (CIPC)', required_for: 'company' },
-  { doc_type: 'beneficial_ownership',   label: 'Beneficial ownership certificate/declaration', required_for: 'company' },
-  { doc_type: 'group_structure',        label: 'Group structure indicating % shareholding', required_for: 'company' },
-  { doc_type: 'shareholder_certificates', label: 'Shareholder certificates and registers', required_for: 'company' },
-  { doc_type: 'bbbee_cert',             label: 'B-BBEE affidavit/certificate (if applicable)', required_for: 'all' },
-  { doc_type: 'tax_compliance',         label: 'Tax compliance pin / tax registration', required_for: 'all' },
-  { doc_type: 'bank_confirmation',      label: 'Bank confirmation letter (≤3 months old)', required_for: 'all' },
-  { doc_type: 'address_proof',          label: 'Business address proof', required_for: 'all' },
-  { doc_type: 'id_passport',            label: 'IDs/passports for all owners/directors', required_for: 'all' },
-  { doc_type: 'license_permit',         label: 'Licenses/permits to trade precious metals (if applicable)', required_for: 'all' },
-  { doc_type: 'import_export_permit',   label: 'Import/Export permits (if applicable)', required_for: 'all' },
-  { doc_type: 'police_clearance',       label: 'Police clearance certificates (if supplier, ≤12 months)', required_for: 'supplier' },
-  { doc_type: 'supply_chain_declaration', label: 'MetCon Supply Chain Declaration (if supplier)', required_for: 'supplier' },
-  { doc_type: 'aml_policy',             label: 'AML/CFT policies/procedures document', required_for: 'all' },
-];
 
 // ─────────────────────────────────────────────
 // All tracked fields for overall progress

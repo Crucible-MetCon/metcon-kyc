@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { ChatInterface } from '@/components/ChatInterface';
 import { calculateDualProgress } from '@/lib/progress';
-import type { CaseStatus, MessageData } from '@/types/kyc';
+import type { CaseStatus, MessageData, DocumentData } from '@/types/kyc';
 
 interface ChatPageProps {
   params: { token: string };
@@ -37,6 +37,16 @@ export default async function ChatPage({ params }: ChatPageProps) {
     created_at: m.created_at,
   }));
 
+  const documents: DocumentData[] = kycCase.documents.map((d) => ({
+    id: d.id,
+    doc_type: d.doc_type,
+    original_name: d.original_name,
+    file_size: d.file_size,
+    mime_type: d.mime_type,
+    status: d.status,
+    created_at: d.created_at,
+  }));
+
   return (
     <ChatInterface
       token={kycCase.token}
@@ -48,6 +58,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
       initialCanSubmit={progress.can_submit}
       entityType={kycCase.entity_type}
       submittedToCompliance={kycCase.submitted_to_compliance}
+      initialDocuments={documents}
     />
   );
 }

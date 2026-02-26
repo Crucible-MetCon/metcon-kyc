@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Paperclip, Upload, X, CheckCircle, AlertCircle } from 'lucide-react';
+import { DOC_TYPE_LABELS } from '@/lib/document-checklist';
 
 interface FileUploadProps {
   token: string;
@@ -9,25 +10,7 @@ interface FileUploadProps {
   onProgressUpdate?: (mandatory: number, docs: number) => void;
 }
 
-const DOC_TYPES = [
-  { value: 'company_registration',    label: 'Company Registration Documents (CIPC)' },
-  { value: 'beneficial_ownership',    label: 'Beneficial Ownership Certificate/Declaration' },
-  { value: 'group_structure',         label: 'Group Structure (% shareholding)' },
-  { value: 'shareholder_certificates',label: 'Shareholder Certificates & Registers' },
-  { value: 'id_passport',             label: 'ID / Passport Copy' },
-  { value: 'bank_confirmation',       label: 'Bank Confirmation Letter (≤3 months)' },
-  { value: 'tax_compliance',          label: 'Tax Compliance Pin / Certificate' },
-  { value: 'address_proof',           label: 'Business Address Proof' },
-  { value: 'license_permit',          label: 'License/Permit — Precious Metals' },
-  { value: 'import_export_permit',    label: 'Import/Export Permit' },
-  { value: 'police_clearance',        label: 'Police Clearance Certificate (≤12 months)' },
-  { value: 'supply_chain_declaration',label: 'MetCon Supply Chain Declaration' },
-  { value: 'aml_policy',              label: 'AML/CFT Policy Document' },
-  { value: 'anti_bribery_policy',     label: 'Anti-Bribery Policy Document' },
-  { value: 'bbbee_cert',              label: 'B-BBEE Affidavit/Certificate' },
-  { value: 'association_proof',       label: 'Precious Metal Association Membership Proof' },
-  { value: 'other',                   label: 'Other Document' },
-];
+const DOC_TYPES = Object.entries(DOC_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
 type UploadState = 'idle' | 'selecting' | 'uploading' | 'success' | 'error';
 

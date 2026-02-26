@@ -5,7 +5,10 @@ import { Send, Copy, Check, Download, RefreshCw, Mail, Save, X } from 'lucide-re
 import { MessageBubble, TypingIndicator } from './MessageBubble';
 import { DualProgressBar } from './ProgressBar';
 import { FileUpload } from './FileUpload';
-import type { CaseStatus, MessageData } from '@/types/kyc';
+import { RequiredDocumentsButton } from './RequiredDocumentsButton';
+import { RequiredDocumentsPanel } from './RequiredDocumentsPanel';
+import { getRelevantDocs } from '@/lib/document-checklist';
+import type { CaseStatus, MessageData, DocumentData } from '@/types/kyc';
 import Image from 'next/image';
 
 interface ChatInterfaceProps {
@@ -18,6 +21,7 @@ interface ChatInterfaceProps {
   initialCanSubmit: boolean;
   entityType: string | null;
   submittedToCompliance: boolean;
+  initialDocuments: DocumentData[];
 }
 
 interface SSEEvent {
@@ -40,8 +44,9 @@ export function ChatInterface({
   initialDocsPercent,
   initialStatus,
   initialCanSubmit,
-  entityType: _,
+  entityType: initialEntityType,
   submittedToCompliance: initialSubmitted,
+  initialDocuments,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<MessageData[]>(initialMessages);
   const [inputText, setInputText] = useState('');
@@ -61,6 +66,11 @@ export function ChatInterface({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+
+  // Required Documents panel state
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [uploadedDocuments, setUploadedDocuments] = useState<DocumentData[]>(initialDocuments);
+  const [entityType, setEntityType] = useState<string | null>(initialEntityType);
 
   // Pasted image state
   const [pastedImage, setPastedImage] = useState<{
@@ -94,6 +104,17 @@ export function ChatInterface({
         if (kycCase.docs_percent !== undefined) setDocsPercent(kycCase.docs_percent);
         if (kycCase.status) setCaseStatus(kycCase.status as CaseStatus);
         if (kycCase.submitted_to_compliance) setSubmittedToCompliance(true);
+
+        // Sync documents and entity type
+        if (kycCase.documents) {
+          setUploadedDocuments(kycCase.documents.map((d: DocumentData) => ({
+            ...d,
+            created_at: new Date(d.created_at),
+          })));
+        }
+        if (kycCase.counterparty?.entity_type) {
+          setEntityType(kycCase.counterparty.entity_type);
+        }
 
         // Add any new messages from other contributors
         setMessages((prev) => {
@@ -210,6 +231,16 @@ export function ChatInterface({
                         created_at: new Date(m.created_at),
                       }))
                     );
+                    // Sync documents and entity type after each AI response
+                    if (syncData.case.documents) {
+                      setUploadedDocuments(syncData.case.documents.map((d: DocumentData) => ({
+                        ...d,
+                        created_at: new Date(d.created_at),
+                      })));
+                    }
+                    if (syncData.case.counterparty?.entity_type) {
+                      setEntityType(syncData.case.counterparty.entity_type);
+                    }
                   } else {
                     setMessages((prev) => [
                       ...prev,
@@ -304,6 +335,20 @@ export function ChatInterface({
     setTimeout(() => setLinkCopied(false), 2000);
   }
 
+  const fetchDocuments = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/upload/${token}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.documents) {
+        setUploadedDocuments(data.documents.map((d: DocumentData) => ({
+          ...d,
+          created_at: new Date(d.created_at),
+        })));
+      }
+    } catch { /* ignore */ }
+  }, [token]);
+
   function handleUploadComplete(_docType: string, filename: string, aiMessage?: string) {
     if (aiMessage) {
       setMessages((prev) => [
@@ -311,6 +356,7 @@ export function ChatInterface({
         { id: `upload-${Date.now()}`, role: 'assistant', content: aiMessage, metadata: null, created_at: new Date() },
       ]);
     }
+    fetchDocuments();
   }
 
   function handleProgressUpdate(mandatory: number, docs: number) {
@@ -537,6 +583,25 @@ export function ChatInterface({
           <div ref={bottomRef} />
         </div>
       </main>
+
+      {/* ── Required Documents FAB ──────────────── */}
+      <RequiredDocumentsButton
+        uploadedCount={uploadedDocuments.length}
+        totalCount={getRelevantDocs(entityType).length}
+        onClick={() => setIsPanelOpen(true)}
+      />
+
+      {/* ── Required Documents Panel ─────────────── */}
+      <RequiredDocumentsPanel
+        isOpen={isPanelOpen}
+        onClose={() => setIsPanelOpen(false)}
+        token={token}
+        entityType={entityType}
+        uploadedDocuments={uploadedDocuments}
+        onUploadComplete={handleUploadComplete}
+        onProgressUpdate={handleProgressUpdate}
+        onDocumentsChange={fetchDocuments}
+      />
 
       {/* ── Quick chips ────────────────────────── */}
       {!isLoading && messages.length <= 2 && (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { extractFromDocument } from '@/lib/extraction';
 import { uploadFile } from '@/lib/storage';
+import { DOC_TYPE_LABELS } from '@/lib/document-checklist';
 import path from 'path';
 
 export const runtime = 'nodejs';
@@ -16,26 +17,7 @@ const ALLOWED_MIME_TYPES = new Set([
   'image/heic',
 ]);
 
-const DOC_TYPE_MAP: Record<string, string> = {
-  company_registration:    'Company Registration Documents (CIPC)',
-  beneficial_ownership:    'Beneficial Ownership Certificate/Declaration',
-  group_structure:         'Group Structure (% shareholding)',
-  shareholder_certificates:'Shareholder Certificates & Registers',
-  bbbee_cert:              'B-BBEE Affidavit/Certificate',
-  vat_revalidation:        'VAT Domestic Reverse Charge Revalidation Letter',
-  tax_compliance:          'Tax Compliance Pin / Tax Registration Certificate',
-  bank_confirmation:       'Bank Confirmation Letter (≤3 months)',
-  address_proof:           'Business Address Proof',
-  id_passport:             'ID / Passport Copy',
-  license_permit:          'License/Permit to Trade Precious Metals',
-  import_export_permit:    'Import/Export Permit',
-  police_clearance:        'Police Clearance Certificate (≤12 months)',
-  supply_chain_declaration:'MetCon Supply Chain Declaration',
-  aml_policy:              'AML/CFT Policy Document',
-  anti_bribery_policy:     'Anti-Bribery Policy Document',
-  association_proof:       'Precious Metal Association Membership Proof',
-  other:                   'Other Document',
-};
+const DOC_TYPE_MAP = DOC_TYPE_LABELS;
 
 // ─────────────────────────────────────────────
 // Background extraction — runs after response is returned.
