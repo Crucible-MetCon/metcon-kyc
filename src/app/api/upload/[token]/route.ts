@@ -201,8 +201,9 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       docsPercent,
     });
   } catch (error) {
-    console.error('[upload] Error (see server logs for details)');
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('[upload] Error:', msg);
+    return NextResponse.json({ error: msg.includes('R2') ? 'File storage is not configured. Please contact support.' : 'Upload failed' }, { status: 500 });
   }
 }
 
