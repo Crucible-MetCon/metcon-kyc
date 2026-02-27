@@ -585,11 +585,18 @@ export function ChatInterface({
       </main>
 
       {/* ── Required Documents FAB ──────────────── */}
-      <RequiredDocumentsButton
-        uploadedCount={uploadedDocuments.length}
-        totalCount={getRelevantDocs(entityType).length}
-        onClick={() => setIsPanelOpen(true)}
-      />
+      {(() => {
+        const relevant = getRelevantDocs(entityType);
+        const relevantTypes = new Set(relevant.map((d) => d.doc_type));
+        const matched = uploadedDocuments.filter((d) => relevantTypes.has(d.doc_type)).length;
+        return (
+          <RequiredDocumentsButton
+            uploadedCount={matched}
+            totalCount={relevant.length}
+            onClick={() => setIsPanelOpen(true)}
+          />
+        );
+      })()}
 
       {/* ── Required Documents Panel ─────────────── */}
       <RequiredDocumentsPanel

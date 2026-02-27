@@ -156,9 +156,14 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
       include: { associated_persons: true },
     });
 
+    let mandatoryPercent: number | undefined;
+    let docsPercent: number | undefined;
+
     if (freshCounterparty) {
       const { calculateDualProgress } = await import('@/lib/progress');
       const progress = calculateDualProgress(freshCounterparty, freshDocs);
+      mandatoryPercent = progress.mandatory_percent;
+      docsPercent = progress.docs_percent;
       await prisma.case.update({
         where: { id: kycCase.id },
         data: {
@@ -192,6 +197,8 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
         status: doc.status,
       },
       aiMessage,
+      mandatoryPercent,
+      docsPercent,
     });
   } catch (error) {
     console.error('[upload] Error (see server logs for details)');

@@ -63,6 +63,9 @@ export function RequiredDocumentsPanel({
   const [errorMessage, setErrorMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  // Ref mirrors activeDocType so handleFileSelected always reads the latest
+  // value synchronously — no need for a setTimeout before click().
+  const activeDocTypeRef = useRef<string | null>(null);
 
   // Close on Escape
   useEffect(() => {
@@ -91,16 +94,19 @@ export function RequiredDocumentsPanel({
   ];
 
   const handleTileClick = useCallback((docType: string) => {
+    activeDocTypeRef.current = docType;
     setActiveDocType(docType);
     setTileState('idle');
     setErrorMessage('');
-    // Small delay to ensure state is set before click
-    setTimeout(() => fileInputRef.current?.click(), 50);
+    // Click synchronously — the ref holds the doc type immediately so
+    // handleFileSelected can read it without waiting for a re-render.
+    fileInputRef.current?.click();
   }, []);
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !activeDocType) return;
+    const docType = activeDocTypeRef.current;
+    if (!file || !docType) return;
 
     if (file.size > 50 * 1024 * 1024) {
       setErrorMessage('File too large (max 50 MB)');
@@ -113,7 +119,7 @@ export function RequiredDocumentsPanel({
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('doc_type', activeDocType);
+    formData.append('doc_type', docType);
 
     try {
       const res = await fetch(`/api/upload/${token}`, { method: 'POST', body: formData });
@@ -122,7 +128,7 @@ export function RequiredDocumentsPanel({
       if (!res.ok) throw new Error(data.error ?? 'Upload failed');
 
       setTileState('success');
-      onUploadComplete(activeDocType, file.name, data.aiMessage);
+      onUploadComplete(docType, file.name, data.aiMessage);
       if (data.mandatoryPercent !== undefined) {
         onProgressUpdate(data.mandatoryPercent, data.docsPercent);
       }
@@ -131,6 +137,7 @@ export function RequiredDocumentsPanel({
       setTimeout(() => {
         setTileState('idle');
         setActiveDocType(null);
+        activeDocTypeRef.current = null;
       }, 1500);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Upload failed');
