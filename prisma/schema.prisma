@@ -11,6 +11,18 @@ datasource db {
 }
 
 // ─────────────────────────────────────────────
+// ADMIN USER — dashboard login accounts
+// ─────────────────────────────────────────────
+model AdminUser {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  password_hash String
+  display_name  String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
 // CASE — top-level onboarding session
 // ─────────────────────────────────────────────
 model Case {

@@ -14,9 +14,9 @@ export async function middleware(req: NextRequest) {
 
   // Protect all /admin and /api/admin routes
   const cookie = req.cookies.get(COOKIE_NAME)?.value;
-  const authenticated = cookie ? await verifySession(cookie) : false;
+  const session = cookie ? await verifySession(cookie) : { valid: false };
 
-  if (!authenticated) {
+  if (!session.valid) {
     // API routes return 401
     if (pathname.startsWith('/api/admin')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

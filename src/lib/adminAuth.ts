@@ -3,8 +3,6 @@
 export const COOKIE_NAME = 'admin_session';
 export const COOKIE_MAX_AGE = 8 * 60 * 60; // 8 hours in seconds
 
-const SESSION_VALUE = 'admin_authenticated';
-
 async function getKey(secret: string): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   return crypto.subtle.importKey(
@@ -22,28 +20,38 @@ function toHex(buffer: ArrayBuffer): string {
     .join('');
 }
 
-/** Returns a signed cookie value: "admin_authenticated.<hex_sig>" */
-export async function signSession(): Promise<string> {
+/** Returns a signed cookie value: "admin:<username>.<hex_sig>" */
+export async function signSession(username: string): Promise<string> {
   const secret = process.env.ADMIN_SECRET ?? 'fallback-secret';
+  const payload = `admin:${username}`;
   const key = await getKey(secret);
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(SESSION_VALUE));
-  return `${SESSION_VALUE}.${toHex(sig)}`;
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return `${payload}.${toHex(sig)}`;
 }
 
-/** Returns true if the cookie value is a valid signed session */
-export async function verifySession(cookie: string): Promise<boolean> {
+/** Returns { valid, username } if the cookie value is a valid signed session */
+export async function verifySession(cookie: string): Promise<{ valid: boolean; username?: string }> {
   try {
     const lastDot = cookie.lastIndexOf('.');
-    if (lastDot === -1) return false;
-    const value = cookie.substring(0, lastDot);
+    if (lastDot === -1) return { valid: false };
+    const payload = cookie.substring(0, lastDot);
     const storedSig = cookie.substring(lastDot + 1);
-    if (value !== SESSION_VALUE) return false;
+
+    // Accept new "admin:<username>" format and legacy "admin_authenticated"
+    if (!payload.startsWith('admin:') && payload !== 'admin_authenticated') {
+      return { valid: false };
+    }
 
     const secret = process.env.ADMIN_SECRET ?? 'fallback-secret';
     const key = await getKey(secret);
-    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value));
-    return toHex(sig) === storedSig;
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+    const valid = toHex(sig) === storedSig;
+
+    if (!valid) return { valid: false };
+
+    const username = payload.startsWith('admin:') ? payload.slice(6) : 'admin';
+    return { valid: true, username };
   } catch {
-    return false;
+    return { valid: false };
   }
 }

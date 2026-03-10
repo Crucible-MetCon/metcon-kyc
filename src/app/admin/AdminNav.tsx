@@ -21,6 +21,9 @@ export default function AdminNav() {
           <Link href="/admin" className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
             Cases
           </Link>
+          <Link href="/admin/users" className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
+            Users
+          </Link>
         </div>
 
         <div className="flex items-center gap-4">
